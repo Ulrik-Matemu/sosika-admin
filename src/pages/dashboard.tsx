@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { 
-  BarChart, LineChart, PieChart, 
+import {
+  BarChart, LineChart, PieChart,
   Bar, Line, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, 
-  Tooltip, Legend, ResponsiveContainer 
+  XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-import { 
+import {
   Users, ShoppingBag, Store, Truck, School,
   Search, Filter, ChevronDown, ChevronUp,
   RefreshCw, Download, Settings, Home
@@ -20,6 +20,14 @@ export default function AdminDashboard() {
     phone_number: string;
     college_id: number;
     college_registration_number: string;
+    created_at: string;
+  }
+
+  const [reviews, setReviews] = useState<Review[]>([]);
+  interface Review {
+    id: number;
+    user_id: number;
+    review_text: string;
     created_at: string;
   }
 
@@ -57,7 +65,7 @@ export default function AdminDashboard() {
     is_active: boolean;
     is_verified: boolean;
   }
-  
+
   const [deliveryPersons, setDeliveryPersons] = useState<DeliveryPerson[]>([]);
   interface College {
     id: number;
@@ -66,7 +74,7 @@ export default function AdminDashboard() {
   }
 
   const [colleges, setColleges] = useState<College[]>([]);
-  
+
   // State for loading indicators
   const [loading, setLoading] = useState({
     users: false,
@@ -75,10 +83,10 @@ export default function AdminDashboard() {
     deliveryPersons: false,
     colleges: false
   });
-  
+
   // State for active tab
   const [activeTab, setActiveTab] = useState('overview');
-  
+
   // State for order filters
   const [orderFilters, setOrderFilters] = useState({
     user_id: '',
@@ -91,12 +99,12 @@ export default function AdminDashboard() {
 
   // State for showing filter panel
   const [showFilters, setShowFilters] = useState(false);
-  
+
   // Fetch all data on component mount
   useEffect(() => {
     fetchAllData();
   }, []);
-  
+
   // Function to fetch all data
   const fetchAllData = async () => {
     fetchUsers();
@@ -104,8 +112,9 @@ export default function AdminDashboard() {
     fetchVendors();
     fetchDeliveryPersons();
     fetchColleges();
+    fetchReviews();
   };
-  
+
   // Function to fetch users
   const fetchUsers = async () => {
     setLoading(prev => ({ ...prev, users: true }));
@@ -121,26 +130,44 @@ export default function AdminDashboard() {
       setLoading(prev => ({ ...prev, users: false }));
     }
   };
-  
+
+  // Function to fetch review
+  const fetchReviews = async () => {
+    setLoading(prev => ({ ...prev, reviews: true }));
+    try {
+      const response = await fetch('https://sosika-backend.onrender.com/api/auth/reviews');
+      if (response.ok) {
+        const data = await response.json();
+        setReviews(data);
+      }
+    }
+    catch (error) {
+      console.log('Error fetching reviews: ', error);
+    } finally {
+      setLoading(prev => ({ ...prev, reviews: true }));
+    }
+
+  }
+
   // Function to fetch orders with filters
   const fetchOrders = async () => {
     setLoading(prev => ({ ...prev, orders: true }));
     try {
       let url = 'https://sosika-backend.onrender.com/api/orders';
-      
+
       // Add query parameters based on filters
       const params = new URLSearchParams();
-      
+
       Object.entries(orderFilters).forEach(([key, value]) => {
         if (value) {
           params.append(key, value);
         }
       });
-      
+
       if (params.toString()) {
         url += `?${params.toString()}`;
       }
-      
+
       const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
@@ -152,7 +179,7 @@ export default function AdminDashboard() {
       setLoading(prev => ({ ...prev, orders: false }));
     }
   };
-  
+
   // Function to fetch vendors
   const fetchVendors = async () => {
     setLoading(prev => ({ ...prev, vendors: true }));
@@ -168,7 +195,7 @@ export default function AdminDashboard() {
       setLoading(prev => ({ ...prev, vendors: false }));
     }
   };
-  
+
   // Function to fetch delivery persons
   const fetchDeliveryPersons = async () => {
     setLoading(prev => ({ ...prev, deliveryPersons: true }));
@@ -184,7 +211,7 @@ export default function AdminDashboard() {
       setLoading(prev => ({ ...prev, deliveryPersons: false }));
     }
   };
-  
+
   // Function to fetch colleges
   const fetchColleges = async () => {
     setLoading(prev => ({ ...prev, colleges: true }));
@@ -200,7 +227,7 @@ export default function AdminDashboard() {
       setLoading(prev => ({ ...prev, colleges: false }));
     }
   };
-  
+
   // Function to handle filter changes
   const handleFilterChange = (e: any) => {
     const { name, value } = e.target;
@@ -209,12 +236,12 @@ export default function AdminDashboard() {
       [name]: value
     }));
   };
-  
+
   // Function to apply filters
   const applyFilters = () => {
     fetchOrders();
   };
-  
+
   // Function to reset filters
   const resetFilters = () => {
     setOrderFilters({
@@ -226,7 +253,7 @@ export default function AdminDashboard() {
       to_date: ''
     });
   };
-  
+
   // Compute statistics for overview
   const statistics = {
     totalUsers: users.length,
@@ -234,32 +261,32 @@ export default function AdminDashboard() {
     totalVendors: vendors.length,
     totalDeliveryPersons: deliveryPersons.length,
     totalColleges: colleges.length,
-    
+
     completedOrders: orders.filter(order => order.order_status === 'completed').length,
     pendingOrders: orders.filter(order => order.order_status === 'pending').length,
     inProgressOrders: orders.filter(order => order.order_status === 'in_progress').length,
     cancelledOrders: orders.filter(order => order.order_status === 'cancelled').length,
-    
+
     totalRevenue: orders
       .filter(order => order.order_status === 'completed')
       .reduce((sum, order) => sum + parseFloat(order.total_amount), 0)
       .toFixed(2),
-      
-    avgOrderValue: orders.length > 0 
+
+    avgOrderValue: orders.length > 0
       ? (orders.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) / orders.length).toFixed(2)
       : '0.00',
-      
+
     avgDeliveryRating: orders
       .filter(order => order.delivery_rating)
       .reduce((sum, order, _, array) => sum + (order.delivery_rating ?? 0) / array.length, 0)
       .toFixed(1),
-      
+
     avgVendorRating: orders
       .filter(order => order.vendor_rating)
       .reduce((sum, order, _, array) => sum + (order.vendor_rating ?? 0) / array.length, 0)
       .toFixed(1),
   };
-  
+
   // Prepare data for charts
   const orderStatusData = [
     { name: 'Completed', value: statistics.completedOrders },
@@ -267,13 +294,13 @@ export default function AdminDashboard() {
     { name: 'In Progress', value: statistics.inProgressOrders },
     { name: 'Cancelled', value: statistics.cancelledOrders },
   ];
-  
+
   const COLORS = ['#4ade80', '#fbbf24', '#60a5fa', '#f87171'];
-  
+
   // Group orders by date for line chart
   const getOrdersByDate = () => {
     const ordersByDate: { [key: string]: number } = {};
-    
+
     orders.forEach(order => {
       const date = new Date(order.order_datetime).toLocaleDateString();
       if (!ordersByDate[date]) {
@@ -281,12 +308,12 @@ export default function AdminDashboard() {
       }
       ordersByDate[date]++;
     });
-    
+
     return Object.entries(ordersByDate)
       .map(([date, count]) => ({ date, count }))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   };
-  
+
   // Count users per college
   const getUsersByCollege = () => {
     interface User {
@@ -300,15 +327,15 @@ export default function AdminDashboard() {
     }
 
     const usersByCollege: Record<number, number> = {};
-    
+
     users.forEach((user: User) => {
       if (!usersByCollege[user.college_id]) {
-      const college = colleges.find((c: College) => c.id === parseInt(user.college_id.toString()));
-      console.log(college);
+        const college = colleges.find((c: College) => c.id === parseInt(user.college_id.toString()));
+        console.log(college);
       }
       usersByCollege[user.college_id]++;
     });
-    
+
     return Object.entries(usersByCollege).map(([college_id, count]) => {
       const college = colleges.find(c => c.id === parseInt(college_id));
       return {
@@ -317,74 +344,74 @@ export default function AdminDashboard() {
       };
     });
   };
-  
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-      <div className="flex items-center">
-        <Home className="h-8 w-8 text-blue-600 mr-3" />
-        <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-      </div>
-      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-4">
-        <button
-          onClick={fetchAllData}
-          className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </button>
-        <button className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-          <Download className="h-4 w-4 mr-2" />
-          Export
-        </button>
-        <button className="p-2 rounded-full text-gray-400 hover:text-gray-500 hover:bg-gray-100">
-          <Settings className="h-5 w-5" />
-        </button>
-      </div>
-    </div>
-  </div>
-</header>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+            <div className="flex items-center">
+              <Home className="h-8 w-8 text-blue-600 mr-3" />
+              <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+            </div>
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-4">
+              <button
+                onClick={fetchAllData}
+                className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </button>
+              <button className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </button>
+              <button className="p-2 rounded-full text-gray-400 hover:text-gray-500 hover:bg-gray-100">
+                <Settings className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
 
-      
+
       {/* Navigation */}
       <nav className="bg-white shadow-sm">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div className="flex overflow-x-auto sm:overflow-visible space-x-4 sm:space-x-8 whitespace-nowrap">
-      {[
-        { key: 'overview', label: 'Overview' },
-        { key: 'users', label: 'Users' },
-        { key: 'orders', label: 'Orders' },
-        { key: 'vendors', label: 'Vendors' },
-        { key: 'delivery', label: 'Delivery Persons' },
-        { key: 'colleges', label: 'Colleges' }
-      ].map(tab => (
-        <button
-          key={tab.key}
-          className={`py-4 px-1 border-b-2 font-medium text-sm ${
-            activeTab === tab.key
-              ? 'border-blue-500 text-blue-600'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          }`}
-          onClick={() => setActiveTab(tab.key)}
-        >
-          {tab.label}
-        </button>
-      ))}
-    </div>
-  </div>
-</nav>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex overflow-x-auto sm:overflow-visible space-x-4 sm:space-x-8 whitespace-nowrap">
+            {[
+              { key: 'overview', label: 'Overview' },
+              { key: 'users', label: 'Users' },
+              { key: 'orders', label: 'Orders' },
+              { key: 'vendors', label: 'Vendors' },
+              { key: 'delivery', label: 'Delivery Persons' },
+              { key: 'colleges', label: 'Colleges' },
+              { key: 'reviews', label: 'Reviews' }
+            ].map(tab => (
+              <button
+                key={tab.key}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === tab.key
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </nav>
 
-      
+
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Overview */}
         {activeTab === 'overview' && (
           <div>
             <h2 className="text-lg font-medium text-gray-900 mb-6">Dashboard Overview</h2>
-            
+
             {/* Stats cards */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5 mb-8">
               <div className="bg-white overflow-hidden shadow rounded-lg">
@@ -404,7 +431,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-white overflow-hidden shadow rounded-lg">
                 <div className="p-5">
                   <div className="flex items-center">
@@ -422,7 +449,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-white overflow-hidden shadow rounded-lg">
                 <div className="p-5">
                   <div className="flex items-center">
@@ -440,7 +467,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-white overflow-hidden shadow rounded-lg">
                 <div className="p-5">
                   <div className="flex items-center">
@@ -458,7 +485,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-white overflow-hidden shadow rounded-lg">
                 <div className="p-5">
                   <div className="flex items-center">
@@ -477,7 +504,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
-            
+
             {/* Revenue and completion stats */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
               <div className="bg-white overflow-hidden shadow rounded-lg">
@@ -494,7 +521,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-white overflow-hidden shadow rounded-lg">
                 <div className="p-5">
                   <div className="flex items-center">
@@ -509,7 +536,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-white overflow-hidden shadow rounded-lg">
                 <div className="p-5">
                   <div className="flex items-center">
@@ -524,7 +551,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-white overflow-hidden shadow rounded-lg">
                 <div className="p-5">
                   <div className="flex items-center">
@@ -540,7 +567,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
-            
+
             {/* Charts */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-8">
               {/* Orders by Status */}
@@ -569,7 +596,7 @@ export default function AdminDashboard() {
                   </ResponsiveContainer>
                 </div>
               </div>
-              
+
               {/* Orders Timeline */}
               <div className="bg-white shadow rounded-lg p-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Orders Timeline</h3>
@@ -594,7 +621,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
-            
+
             {/* Users by College */}
             <div className="bg-white shadow rounded-lg p-6 mb-8">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Users by College</h3>
@@ -610,7 +637,7 @@ export default function AdminDashboard() {
                     }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
+                    <XAxis
                       dataKey="name"
                       angle={-45}
                       textAnchor="end"
@@ -625,7 +652,7 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
-        
+
         {/* Users */}
         {activeTab === 'users' && (
           <div>
@@ -644,7 +671,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
-            
+
             {/* Users table */}
             <div className="bg-white shadow overflow-hidden rounded-lg">
               <div className="overflow-x-auto">
@@ -723,7 +750,7 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
-        
+
         {/* Orders */}
         {activeTab === 'orders' && (
           <div>
@@ -744,7 +771,7 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </div>
-            
+
             {/* Filters panel */}
             {showFilters && (
               <div className="bg-white p-4 rounded-lg shadow mb-6">
@@ -851,7 +878,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
-            
+
             {/* Orders table */}
             <div className="bg-white shadow overflow-hidden rounded-lg">
               <div className="overflow-x-auto">
@@ -903,7 +930,7 @@ export default function AdminDashboard() {
                         const vendor = vendors.find(v => v.id === order.vendor_id);
                         const deliveryPerson = deliveryPersons.find(d => d.id === order.delivery_person_id);
                         console.log(deliveryPerson);
-                        
+
                         return (
                           <tr key={order.id}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -963,7 +990,7 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
-        
+
         {/* Vendors */}
         {activeTab === 'vendors' && (
           <div>
@@ -982,7 +1009,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
-            
+
             {/* Vendors table */}
             <div className="bg-white shadow overflow-hidden rounded-lg">
               <div className="overflow-x-auto">
@@ -1029,13 +1056,13 @@ export default function AdminDashboard() {
                       vendors.map(vendor => {
                         const college = colleges.find(c => c.id === vendor.college_id);
                         const vendorOrders = orders.filter(o => o.vendor_id === vendor.id);
-                        
+
                         // Calculate average rating
                         const ratedOrders = vendorOrders.filter(o => o.vendor_rating);
                         const avgRating = ratedOrders.length > 0
                           ? (ratedOrders.reduce((sum, o) => sum + (o.vendor_rating ?? 0), 0) / ratedOrders.length).toFixed(1)
                           : 'N/A';
-                        
+
                         return (
                           <tr key={vendor.id}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -1051,9 +1078,8 @@ export default function AdminDashboard() {
                               {college ? college.name : `College ${vendor.college_id}`}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                vendor.is_open ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                              }`}>
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${vendor.is_open ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                }`}>
                                 {vendor.is_open ? 'Open' : 'Closed'}
                               </span>
                             </td>
@@ -1073,7 +1099,7 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
-        
+
         {/* Delivery Persons */}
         {activeTab === 'delivery' && (
           <div>
@@ -1092,7 +1118,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
-            
+
             {/* Delivery Persons table */}
             <div className="bg-white shadow overflow-hidden rounded-lg">
               <div className="overflow-x-auto">
@@ -1145,13 +1171,13 @@ export default function AdminDashboard() {
                       deliveryPersons.map(person => {
                         const college = colleges.find(c => c.id === person.college_id);
                         const personOrders = orders.filter(o => o.delivery_person_id === person.id);
-                        
+
                         // Calculate average rating
                         const ratedOrders = personOrders.filter(o => o.delivery_rating);
                         const avgRating = ratedOrders.length > 0
                           ? (ratedOrders.reduce((sum, o) => sum + (o.delivery_rating ?? 0), 0) / ratedOrders.length).toFixed(1)
                           : 'N/A';
-                        
+
                         return (
                           <tr key={person.id}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -1173,16 +1199,14 @@ export default function AdminDashboard() {
                               {person.transport_type.charAt(0).toUpperCase() + person.transport_type.slice(1)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                person.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                              }`}>
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${person.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                }`}>
                                 {person.is_active ? 'Active' : 'Inactive'}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                person.is_verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                              }`}>
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${person.is_verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                                }`}>
                                 {person.is_verified ? 'Verified' : 'Pending'}
                               </span>
                             </td>
@@ -1199,7 +1223,7 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
-        
+
         {/* Colleges */}
         {activeTab === 'colleges' && (
           <div>
@@ -1218,7 +1242,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
-            
+
             {/* Colleges table */}
             <div className="bg-white shadow overflow-hidden rounded-lg">
               <div className="overflow-x-auto">
@@ -1263,7 +1287,7 @@ export default function AdminDashboard() {
                         const collegeUsers = users.filter(u => u.college_id === college.id);
                         const collegeVendors = vendors.filter(v => v.college_id === college.id);
                         const collegeDeliveryPersons = deliveryPersons.filter(d => d.college_id === college.id);
-                        
+
                         return (
                           <tr key={college.id}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -1292,6 +1316,21 @@ export default function AdminDashboard() {
                 </table>
               </div>
             </div>
+          </div>
+        )}
+        {activeTab === 'reviews' && (
+          <div className="p-4">
+            <h2 className="text-2xl font-bold mb-4">User Reviews</h2>
+            <ul className="space-y-4">
+              {reviews.map(review => (
+                <li key={review.id} className="border p-4 rounded shadow-sm">
+                  <p className="text-gray-700">{review.review_text}</p>
+                  <p className="text-sm text-gray-400 mt-2">
+                    Posted on {new Date(review.created_at).toLocaleDateString()}
+                  </p>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </main>
